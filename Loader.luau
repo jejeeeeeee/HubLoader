@@ -26,6 +26,15 @@ local SupportedGames = {
 		},
 		LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/DHMenuLoader.luau",
 	},
+	["MurderMystery2"] = {
+		Name = "Murder Mystery 2",
+		PlaceIds = {
+			142823291,
+			335132778,
+			635183880,
+		},
+		LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/MM2MenuLoader.luau",
+	},
 }
 
 local DefaultGameKey = "DaHood"
