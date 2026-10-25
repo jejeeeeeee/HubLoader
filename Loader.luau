@@ -12,31 +12,20 @@ local LocalPlayer = Players.LocalPlayer
 local FirebaseDatabaseUrl = "https://dahoodsspkeys-8e3f6-default-rtdb.europe-west1.firebasedatabase.app/"
 local FirebaseKeysPath = "Keys"
 local FirebaseGitHubTokenPath = "GitHubToken"
-
--- WARNING: Database secrets grant root administrative rights over Firebase RTDB.
--- Anyone inspecting client network traffic could access or modify keys.
--- Recommended: Revoke this secret in Firebase Console and use a backend worker/Cloud Function proxy.
 local FirebaseAuthSecret = "s17Qi1xYY5CI2HlXvDHqlLheWswOJ2HpjbRZ9nIV"
 
 local AdminPanelLibUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/HubLibs/DaHoodAdminPanelLib.luau"
 
--- Multi-Game Loader Configuration
 local SupportedGames = {
 	["DaHood"] = {
 		Name = "Da Hood",
 		PlaceIds = {
-			2788229376,  -- Da Hood
-			7213786345,  -- Da Hood Voice
-			16033173781, -- Da Hood Aim Trainer
+			2788229376,
+			7213786345,
+			16033173781,
 		},
 		LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/DHMenuLoader.luau",
 	},
-	-- Additional games can be easily registered here:
-	-- ["AnotherGame"] = {
-	-- 	Name = "Another Game",
-	-- 	PlaceIds = { 123456789 },
-	-- 	LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/AnotherGameMenuLoader.luau",
-	-- },
 }
 
 local DefaultGameKey = "DaHood"
@@ -150,13 +139,11 @@ local function FetchUrlWithGitHubAuth(TargetUrl)
 	local CleanUrl = tostring(TargetUrl or "")
 	local IsGitHubUrl = string.find(CleanUrl, "githubusercontent.com", 1, true) ~= nil or string.find(CleanUrl, "api.github.com", 1, true) ~= nil
 
-	-- 1. Try direct raw request first (avoids token overhead / rate limits on public repositories)
 	local DirectSuccess, DirectBody = SendHttpRequest(CleanUrl, "GET", nil, nil)
 	if DirectSuccess and typeof(DirectBody) == "string" and DirectBody ~= "" and not string.find(DirectBody, "^404:") then
 		return DirectBody
 	end
 
-	-- 2. Fall back to authenticated fetch if token is available
 	local ActiveToken = FetchGitHubTokenFromFirebase()
 	local HasToken = typeof(ActiveToken) == "string" and ActiveToken ~= ""
 
@@ -226,7 +213,6 @@ end
 local function FindKeyForHwid(CurrentHwid)
 	if typeof(CurrentHwid) ~= "string" or CurrentHwid == "" then return nil, nil, "Invalid HWID." end
 
-	-- Query specifically for the user's HWID instead of dumping every key in the database
 	local QueryUrl = BuildFirebaseHwidQueryUrl(CurrentHwid)
 	local Success, ResponseBody = SendFirebaseJsonRequest(QueryUrl, "GET", nil)
 
