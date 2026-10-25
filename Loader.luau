@@ -13,10 +13,50 @@ local FirebaseDatabaseUrl = "https://dahoodsspkeys-8e3f6-default-rtdb.europe-wes
 local FirebaseKeysPath = "Keys"
 local FirebaseGitHubTokenPath = "GitHubToken"
 
+-- WARNING: Database secrets grant root administrative rights over Firebase RTDB.
+-- Anyone inspecting client network traffic could access or modify keys.
+-- Recommended: Revoke this secret in Firebase Console and use a backend worker/Cloud Function proxy.
 local FirebaseAuthSecret = "s17Qi1xYY5CI2HlXvDHqlLheWswOJ2HpjbRZ9nIV"
 
 local AdminPanelLibUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/HubLibs/DaHoodAdminPanelLib.luau"
-local MenuLoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/MenuLoader.luau"
+
+-- Multi-Game Loader Configuration
+local SupportedGames = {
+	["DaHood"] = {
+		Name = "Da Hood",
+		PlaceIds = {
+			2788229376,  -- Da Hood
+			7213786345,  -- Da Hood Voice
+			16033173781, -- Da Hood Aim Trainer
+		},
+		LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/DHMenuLoader.luau",
+	},
+	-- Additional games can be easily registered here:
+	-- ["AnotherGame"] = {
+	-- 	Name = "Another Game",
+	-- 	PlaceIds = { 123456789 },
+	-- 	LoaderUrl = "https://raw.githubusercontent.com/jejeeeeeee/GlobalScripts/main/Loaders/AnotherGameMenuLoader.luau",
+	-- },
+}
+
+local DefaultGameKey = "DaHood"
+local SelectedGameKey = nil
+
+local function DetectGame()
+	local CurrentPlaceId = game.PlaceId
+	for GameKey, GameInfo in pairs(SupportedGames) do
+		if table.find(GameInfo.PlaceIds, CurrentPlaceId) then
+			return GameKey, GameInfo
+		end
+	end
+	return DefaultGameKey, SupportedGames[DefaultGameKey]
+end
+
+local function GetTargetLoaderUrl()
+	local ActiveKey = SelectedGameKey or DetectGame()
+	local GameConfig = SupportedGames[ActiveKey] or SupportedGames[DefaultGameKey]
+	return GameConfig.LoaderUrl, GameConfig.Name
+end
 
 local GitHubAccessToken = ""
 local IsVerifying = false
@@ -326,19 +366,43 @@ local AutoAuthenticated, AutoAuthMessage = TryAutomaticFirebaseAuthentication(Cu
 
 if AutoAuthenticated then
 	FetchGitHubTokenFromFirebase()
-	local LoadSuccess, LoadError = pcall(function() LoadPrivateGitHubScript(MenuLoaderUrl) end)
-	if not LoadSuccess then warn("Failed to load MenuLoader:", LoadError) end
+	local TargetUrl, GameName = GetTargetLoaderUrl()
+	local LoadSuccess, LoadError = pcall(function() LoadPrivateGitHubScript(TargetUrl) end)
+	if not LoadSuccess then warn("Failed to load " .. tostring(GameName) .. " menu:", LoadError) end
    _G.DaHoodSSPHasBeenLoadedAlreadySoTheyCantRunItAgainToPreventDoubleExecutionAndGlitchesWithTheMenu = true
 else
 	FetchGitHubTokenFromFirebase()
 
 	local Library = LoadPrivateGitHubScript(AdminPanelLibUrl)
 
-	local KeyWindow = Library:CreateWindow({Name = "DaHoodKeySystem", Width = 660, Height = 310, ShowPlayerPicker = false, BodyTopOffset = 58, ToggleKey = Enum.KeyCode.RightShift})
+	local KeyWindow = Library:CreateWindow({Name = "DaHoodKeySystem", Width = 660, Height = 350, ShowPlayerPicker = false, BodyTopOffset = 58, ToggleKey = Enum.KeyCode.RightShift})
 
 	local KeyTab = KeyWindow:CreateTab({Name = "KeySystem", Title = "Key System", Width = 115, Default = true})
 
-	local AuthSection = KeyTab:CreateSection({Title = "Authentication", Subtitle = "Enter your license key to load Da Hood Secret Service Panel"})
+	local AuthSection = KeyTab:CreateSection({Title = "Authentication", Subtitle = "Enter your license key to load menu"})
+
+	local DetectedKey, DetectedGame = DetectGame()
+	SelectedGameKey = DetectedKey
+
+	local GameDropdownOptions = {}
+	for _, GameInfo in pairs(SupportedGames) do
+		table.insert(GameDropdownOptions, GameInfo.Name)
+	end
+
+	AuthSection:CreateDropdown({
+		Placeholder = "Game: " .. DetectedGame.Name,
+		Options = GameDropdownOptions,
+		Default = DetectedGame.Name,
+		SingleSelect = true,
+		Callback = function(ChosenGameName)
+			for Key, Info in pairs(SupportedGames) do
+				if Info.Name == ChosenGameName then
+					SelectedGameKey = Key
+					break
+				end
+			end
+		end
+	})
 
 	local StatusLabel = AuthSection:CreateLabel({Text = "Status: Waiting for license key...", Muted = true})
 	local KeyInput = nil
@@ -361,13 +425,14 @@ else
 			local IsValid, StatusMessage = VerifyAndLinkFirebaseKey(CleanInput, CurrentHwid)
 
 			if IsValid then
-				StatusLabel:SetText("Status: " .. tostring(StatusMessage) .. " Loading hub...")
+				local TargetUrl, GameName = GetTargetLoaderUrl()
+				StatusLabel:SetText("Status: " .. tostring(StatusMessage) .. " Loading " .. tostring(GameName) .. "...")
 				KeyWindow:Notify(StatusMessage, true, 3)
 				task.wait(0.4)
 				KeyWindow:Destroy()
 
-				local LoadSuccess, LoadError = pcall(function() LoadPrivateGitHubScript(MenuLoaderUrl) end)
-				if not LoadSuccess then warn("Failed to load MenuLoader:", LoadError) end
+				local LoadSuccess, LoadError = pcall(function() LoadPrivateGitHubScript(TargetUrl) end)
+				if not LoadSuccess then warn("Failed to load " .. tostring(GameName) .. " menu:", LoadError) end
                 _G.DaHoodSSPHasBeenLoadedAlreadySoTheyCantRunItAgainToPreventDoubleExecutionAndGlitchesWithTheMenu = true
 			else
 				StatusLabel:SetText("Status: " .. tostring(StatusMessage))
