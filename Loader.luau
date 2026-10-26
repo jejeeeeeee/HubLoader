@@ -130,8 +130,7 @@ local function FetchGitHubTokenFromFirebase()
 		local DecodeSuccess, DecodedToken = pcall(function() return HttpService:JSONDecode(ResponseBody) end)
 		if DecodeSuccess and typeof(DecodedToken) == "string" and DecodedToken ~= "" then
 			GitHubAccessToken = DecodedToken:gsub("^%s+", ""):gsub("%s+$", "")
-			_G.GitHubAccessToken = GitHubAccessToken
-			return GitHubAccessToken
+						return GitHubAccessToken
 		end
 	end
 
@@ -180,7 +179,7 @@ local function LoadPrivateGitHubScript(TargetUrl)
 	local CompiledChunk, CompileError = loadstring(PatchedSource)
 	if not CompiledChunk then error("Failed to compile script: " .. tostring(CompileError)) end
 
-	return CompiledChunk()
+	return CompiledChunk(GitHubAccessToken)
 end
 
 _G.PrivateGitHubHttpGet = FetchUrlWithGitHubAuth
@@ -255,8 +254,7 @@ local function TryAutomaticFirebaseAuthentication(CurrentHwid)
 
 	if typeof(KeyData.GitHubToken) == "string" and KeyData.GitHubToken ~= "" then
 		GitHubAccessToken = KeyData.GitHubToken
-		_G.GitHubAccessToken = GitHubAccessToken
-	end
+			end
 
 	return true, "Automatically authenticated."
 end
@@ -321,8 +319,7 @@ local function VerifyAndLinkFirebaseKey(RawKey, CurrentHwid)
 
 		if typeof(KeyData.GitHubToken) == "string" and KeyData.GitHubToken ~= "" then
 			GitHubAccessToken = KeyData.GitHubToken
-			_G.GitHubAccessToken = GitHubAccessToken
-		end
+					end
 
 		local ExistingHwid = KeyData.HWID or KeyData.Hwid or KeyData.hwid
 
