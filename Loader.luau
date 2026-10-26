@@ -86,10 +86,25 @@ local function SendHttpRequest(TargetUrl, Method, CustomHeaders, BodyString)
 	local HeadersTable = CustomHeaders or {}
 
 	if RequestFunction then
-		local Success, Response = pcall(RequestFunction, {Url = TargetUrl, Method = Method or "GET", Headers = HeadersTable, Body = BodyString})
-		if Success and Response then
-			local StatusCode = tonumber(Response.StatusCode or Response.Status) or 200
-			return StatusCode >= 200 and StatusCode < 300, Response.Body, StatusCode
+		local RequestOptions = {
+			Url = TargetUrl,
+			url = TargetUrl,
+			Method = Method or "GET",
+			method = Method or "GET",
+			Headers = HeadersTable,
+			headers = HeadersTable,
+			Body = BodyString,
+			body = BodyString
+		}
+		local Success, Response = pcall(RequestFunction, RequestOptions)
+		if Success and typeof(Response) == "table" then
+			local Body = Response.Body or Response.body or Response.data or ""
+			local StatusCode = tonumber(Response.StatusCode or Response.Status or Response.status_code or Response.statusCode)
+			if not StatusCode and Response.Success ~= nil then
+				StatusCode = Response.Success and 200 or 500
+			end
+			StatusCode = StatusCode or (Body ~= "" and 200 or 0)
+			return (StatusCode >= 200 and StatusCode < 300), tostring(Body), StatusCode
 		end
 	end
 
@@ -97,14 +112,18 @@ local function SendHttpRequest(TargetUrl, Method, CustomHeaders, BodyString)
 		return HttpService:RequestAsync({Url = TargetUrl, Method = Method or "GET", Headers = HeadersTable, Body = BodyString})
 	end)
 
-	if AsyncSuccess and AsyncResponse then return AsyncResponse.Success, AsyncResponse.Body, AsyncResponse.StatusCode end
+	if AsyncSuccess and AsyncResponse then
+		local Body = AsyncResponse.Body or AsyncResponse.body or ""
+		local StatusCode = tonumber(AsyncResponse.StatusCode or AsyncResponse.Status) or 200
+		return AsyncResponse.Success, tostring(Body), StatusCode
+	end
 
 	if (Method == nil or Method == "GET") and next(HeadersTable) == nil then
 		local GetSuccess, GetBody = pcall(function() return game:HttpGet(TargetUrl) end)
-		if GetSuccess then return true, GetBody, 200 end
+		if GetSuccess and typeof(GetBody) == "string" and GetBody ~= "" then return true, GetBody, 200 end
 	end
 
-	return false, nil, 0
+	return false, "", 0
 end
 
 local function BuildFirebaseEndpointUrl(SubPath)
